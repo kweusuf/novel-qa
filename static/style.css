@@ -1,0 +1,49 @@
+body {
+    font-family: sans-serif;
+    padding: 2em;
+    background: #f9f9f9;
+}
+
+.auth-container {
+    max-width: 400px;
+    margin: 0 auto;
+    background: white;
+    padding: 2em;
+    border-radius: 5px;
+}
+
+input, textarea, select, button {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.error { color: red; }
+.success { color: green; }
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logout {
+    background: #dc3545;
+    color: white;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+}
+
+.upload-section {
+    background: #e9e9e9;
+    padding: 1em;
+    margin-bottom: 2em;
+}
+
+pre {
+    background: white;
+    padding: 1em;
+    white-space: pre-wrap;
+    border: 1px solid #ccc;
+}

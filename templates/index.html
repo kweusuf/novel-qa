@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📚 Novel Q&A Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>📚 Novel Q&A Assistant</h1>
+    </div>
+    
+    <div class="upload-section">
+        <h3>📤 Upload New Novel</h3>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="novelFile" name="file" accept=".txt" required>
+            <button type="submit">Upload Novel</button>
+        </form>
+        <div id="uploadStatus"></div>
+    </div>
+
+    <form id="qaForm">
+        <select id="model">
+            <option value="phi3">phi3</option>
+            <option value="llama3">llama3</option>
+            <option value="mistral">mistral</option>
+            <option value="gemma">gemma</option>
+        </select>
+        <textarea id="question" placeholder="Ask a question about the novels..."></textarea>
+        <button type="submit">Ask</button>
+    </form>
+
+    <h3>Answer:</h3>
+    <pre id="answer">Your answer will appear here...</pre>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            const fileInput = document.getElementById('novelFile');
+            formData.append('file', fileInput.files[0]);
+
+            const res = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await res.text();
+            document.getElementById('uploadStatus').innerHTML = 
+                res.ok ? `<p class="success">✅ ${result}</p>` : 
+                         `<p class="error">❌ Error: ${result}</p>`;
+        });
+
+        document.getElementById('qaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const question = document.getElementById('question').value;
+            const model = document.getElementById('model').value;
+            
+            const res = await fetch('/ask', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ question, model })
+            });
+            
+            const data = await res.json();
+            document.getElementById('answer').textContent = data.answer;
+        });
+    </script>
+</body>
+</body>
+</html>
