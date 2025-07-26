@@ -3,17 +3,34 @@
 <head>
     <title>📚 Novel Q&A Assistant</title>
     <link rel="stylesheet" href="/static/style.css">
+    <!-- Add some basic style for file list -->
+    <style>
+        #fileList {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        #fileList ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        #fileList li {
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="header">
         <h1>📚 Novel Q&A Assistant</h1>
     </div>
-    
+
     <div class="upload-section">
-        <h3>📤 Upload New Novel</h3>
+        <h3>📤 Upload New Novels</h3>
+        <p><small>Select one or more .txt files (Cmd/Ctrl+Click or Shift+Click to select multiple files from the same folder).</small></p>
         <form id="uploadForm" enctype="multipart/form-data">
-            <input type="file" id="novelFile" name="file" accept=".txt" required>
-            <button type="submit">Upload Novel</button>
+            <input type="file" id="novelFile" name="files" accept=".txt" multiple required>
+            <div id="fileList"></div> <!-- Display selected files -->
+            <button type="submit">Upload Selected Novels</button>
         </form>
         <div id="uploadStatus"></div>
     </div>
@@ -33,38 +50,90 @@
     <pre id="answer">Your answer will appear here...</pre>
 
     <script>
+        // Display selected file names
+        document.getElementById('novelFile').addEventListener('change', function(e) {
+            const fileListDiv = document.getElementById('fileList');
+            const files = e.target.files;
+            if (files.length > 0) {
+                let listHtml = '<p>Selected files:</p><ul>';
+                for (let i = 0; i < files.length; i++) {
+                    listHtml += `<li>${files[i].name}</li>`;
+                }
+                listHtml += '</ul>';
+                fileListDiv.innerHTML = listHtml;
+            } else {
+                fileListDiv.innerHTML = '';
+            }
+        });
+
         document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData();
             const fileInput = document.getElementById('novelFile');
-            formData.append('file', fileInput.files[0]);
 
-            const res = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
+            if (fileInput.files.length === 0) {
+                document.getElementById('uploadStatus').innerHTML = `<p class="error">❌ Please select at least one file.</p>`;
+                return;
+            }
 
-            const result = await res.text();
-            document.getElementById('uploadStatus').innerHTML = 
-                res.ok ? `<p class="success">✅ ${result}</p>` : 
-                         `<p class="error">❌ Error: ${result}</p>`;
+            // Append all selected files
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+
+            // Provide user feedback immediately
+            document.getElementById('uploadStatus').innerHTML = `<p class="info">📤 Uploading ${fileInput.files.length} file(s)...</p>`;
+
+            try {
+                const res = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await res.text();
+                if (res.ok) {
+                    document.getElementById('uploadStatus').innerHTML = `<p class="success">✅ Upload complete!</p><pre>${result}</pre>`;
+                    // Clear the file input and list after successful upload
+                    fileInput.value = '';
+                    document.getElementById('fileList').innerHTML = '';
+                } else {
+                    document.getElementById('uploadStatus').innerHTML = `<p class="error">❌ Upload failed:</p><pre>${result}</pre>`;
+                }
+            } catch (error) {
+                document.getElementById('uploadStatus').innerHTML = `<p class="error">❌ Network error during upload: ${error.message}</p>`;
+            }
         });
 
         document.getElementById('qaForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const question = document.getElementById('question').value;
             const model = document.getElementById('model').value;
-            
-            const res = await fetch('/ask', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ question, model })
-            });
-            
-            const data = await res.json();
-            document.getElementById('answer').textContent = data.answer;
+
+            if (!question.trim()) {
+                 document.getElementById('answer').textContent = "Please enter a question.";
+                 return;
+            }
+
+            // Provide user feedback
+            document.getElementById('answer').textContent = "🤖 Thinking...";
+
+            try {
+                const res = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ question, model })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('answer').textContent = data.answer;
+                } else {
+                    document.getElementById('answer').textContent = `Error: ${data.error}`;
+                }
+            } catch (error) {
+                 document.getElementById('answer').textContent = `Network Error: ${error.message}`;
+            }
         });
     </script>
-</body>
 </body>
 </html>
