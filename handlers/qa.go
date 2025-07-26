@@ -4,6 +4,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/kweusuf/novel-qa-go/models"
 	"github.com/kweusuf/novel-qa-go/services"
@@ -31,40 +32,63 @@ func (qh *QAHandler) ShowIndex(c *gin.Context) {
 }
 
 func (qh *QAHandler) UploadNovel(c *gin.Context) {
-	file, err := c.FormFile("file")
+	// Use MultipartForm to get all files associated with the 'files' field
+	form, err := c.MultipartForm()
 	if err != nil {
-		c.String(http.StatusBadRequest, "Failed to get file: %v", err)
+		c.String(http.StatusBadRequest, "Failed to parse multipart form: %v", err)
 		return
 	}
 
-	if len(file.Filename) < 4 || file.Filename[len(file.Filename)-4:] != ".txt" {
-		c.String(http.StatusBadRequest, "Only .txt files allowed")
+	files := form.File["files"] // Get the slice of *multipart.FileHeader
+	if len(files) == 0 {
+		c.String(http.StatusBadRequest, "No files provided")
 		return
 	}
 
-	// Save file
-	dst := "novels/" + file.Filename
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.String(http.StatusInternalServerError, "Failed to save file: %v", err)
+	var results []string // To store results for each file
+	processedCount := 0
+
+	for _, fileHeader := range files {
+		// Validate file type (same as before)
+		if len(fileHeader.Filename) < 4 || fileHeader.Filename[len(fileHeader.Filename)-4:] != ".txt" {
+			results = append(results, fmt.Sprintf("Skipped '%s': Only .txt files allowed", fileHeader.Filename))
+			continue
+		}
+
+		// Save file (same as before, but using fileHeader)
+		dst := "novels/" + fileHeader.Filename
+		if err := c.SaveUploadedFile(fileHeader, dst); err != nil {
+			results = append(results, fmt.Sprintf("Failed to save '%s': %v", fileHeader.Filename, err))
+			continue // Continue with next file
+		}
+
+		// Read content (same as before)
+		content, err := qh.novelService.ReadNovel(dst)
+		if err != nil {
+			results = append(results, fmt.Sprintf("Failed to read '%s': %v", fileHeader.Filename, err))
+			continue // Continue with next file
+		}
+
+		// Process and add to ChromaDB (same core logic)
+		chunks := qh.novelService.ProcessNovel(fileHeader.Filename, content)
+		err = qh.chromaService.AddDocuments(chunks)
+		if err != nil {
+			results = append(results, fmt.Sprintf("Failed to add '%s' to DB: %v", fileHeader.Filename, err))
+			continue // Continue with next file
+		}
+
+		results = append(results, fmt.Sprintf("Successfully uploaded '%s' (%d chunks added)", fileHeader.Filename, len(chunks)))
+		processedCount++
+	}
+
+	if processedCount == 0 {
+		// If no files were successfully processed
+		c.String(http.StatusInternalServerError, "No files were successfully uploaded. Details:\n%s", strings.Join(results, "\n"))
 		return
 	}
 
-	// Read content
-	content, err := qh.novelService.ReadNovel(dst)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Failed to read file: %v", err)
-		return
-	}
-
-	// Process and add to ChromaDB
-	chunks := qh.novelService.ProcessNovel(file.Filename, content)
-	err = qh.chromaService.AddDocuments(chunks)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Failed to add to database: %v", err)
-		return
-	}
-
-	c.String(http.StatusOK, fmt.Sprintf("Successfully uploaded '%s' (%d chunks added)", file.Filename, len(chunks)))
+	// Return a summary of results
+	c.String(http.StatusOK, "Upload Summary:\n%s", strings.Join(results, "\n"))
 }
 
 func (qh *QAHandler) AskQuestion(c *gin.Context) {
