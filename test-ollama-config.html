@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🧪 Ollama Config Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 2em; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 15px; margin: 5px; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Ollama Configuration Test</h1>
+    
+    <div class="test-section">
+        <h3>🔍 Auto-Detection Test</h3>
+        <button onclick="testAutoDetection()">Test Auto-Detection</button>
+        <div id="autoDetectResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🔧 Custom Endpoint Test</h3>
+        <input type="text" id="customEndpoint" placeholder="http://localhost:11434" value="http://localhost:11434">
+        <button onclick="testCustomEndpoint()">Test Custom Endpoint</button>
+        <div id="customEndpointResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>❓ Question Test with Custom Endpoint</h3>
+        <input type="text" id="testQuestion" placeholder="What is 2+2?" value="What is 2+2?">
+        <select id="testModel">
+            <option value="phi3">phi3</option>
+            <option value="qwen2.5-coder">qwen2.5-coder</option>
+        </select>
+        <button onclick="testQuestionWithCustomEndpoint()">Ask Question</button>
+        <div id="questionResult"></div>
+    </div>
+
+    <script>
+        // Test auto-detection
+        async function testAutoDetection() {
+            const resultDiv = document.getElementById('autoDetectResult');
+            resultDiv.innerHTML = '<span class="info">Testing auto-detection...</span>';
+            
+            try {
+                const endpoints = [
+                    'http://localhost:11434',
+                    'http://host.docker.internal:11434',
+                    'http://127.0.0.1:11434'
+                ];
+                
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(`${endpoint}/api/tags`, { 
+                            method: 'GET',
+                            signal: AbortSignal.timeout(2000)
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            const modelCount = data.models ? data.models.length : 0;
+                            resultDiv.innerHTML = `<span class="success">✅ Found Ollama at ${endpoint} with ${modelCount} model(s)</span>`;
+                            return;
+                        }
+                    } catch (e) {
+                        // Continue to next endpoint
+                    }
+                }
+                
+                resultDiv.innerHTML = '<span class="error">❌ No Ollama instances detected</span>';
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        // Test custom endpoint
+        async function testCustomEndpoint() {
+            const resultDiv = document.getElementById('customEndpointResult');
+            const endpoint = document.getElementById('customEndpoint').value;
+            
+            if (!endpoint) {
+                resultDiv.innerHTML = '<span class="error">❌ Please enter an endpoint</span>';
+                return;
+            }
+            
+            resultDiv.innerHTML = `<span class="info">Testing ${endpoint}...</span>`;
+            
+            try {
+                const response = await fetch(`${endpoint}/api/tags`, { 
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000)
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const modelCount = data.models ? data.models.length : 0;
+                    resultDiv.innerHTML = `<span class="success">✅ Connected to ${endpoint}! Found ${modelCount} model(s)</span>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Connection failed: HTTP ${response.status}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Connection failed: ${error.message}</span>`;
+            }
+        }
+        
+        // Test question with custom endpoint
+        async function testQuestionWithCustomEndpoint() {
+            const resultDiv = document.getElementById('questionResult');
+            const question = document.getElementById('testQuestion').value;
+            const model = document.getElementById('testModel').value;
+            const endpoint = document.getElementById('customEndpoint').value;
+            
+            if (!question || !endpoint) {
+                resultDiv.innerHTML = '<span class="error">❌ Please provide both question and endpoint</span>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<span class="info">Asking question...</span>';
+            
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        question, 
+                        model,
+                        ollamaEndpoint: endpoint
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✅ Answer: ${data.answer}</span>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Error: ${data.error}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Network Error: ${error.message}</span>`;
+            }
+        }
+        
+        // Auto-test on page load
+        window.addEventListener('load', function() {
+            setTimeout(testAutoDetection, 1000);
+        });
+    </script>
+</body>
+</html>

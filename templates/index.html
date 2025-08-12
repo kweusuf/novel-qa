@@ -35,13 +35,43 @@
         <div id="uploadStatus"></div>
     </div>
 
+    <div class="config-section">
+        <h3>⚙️ Ollama Configuration</h3>
+        <div class="ollama-config">
+            <label>
+                <input type="radio" name="ollamaMode" value="auto" checked> 
+                🚀 Auto-detect Ollama (Recommended)
+            </label>
+            <div id="autoDetectInfo" class="info-box">
+                <small>✅ Ollama detected at: <span id="detectedEndpoint">Checking...</span></small>
+            </div>
+            
+            <label>
+                <input type="radio" name="ollamaMode" value="custom"> 
+                🔧 Custom Ollama Endpoint
+            </label>
+            <div id="customEndpointInput" class="custom-input" style="display: none;">
+                <input type="text" id="customEndpoint" placeholder="http://localhost:11434" 
+                       pattern="https?://.+:\d+" 
+                       title="Must be a valid URL with protocol and port">
+                <small>Format: http://hostname:port or https://hostname:port</small>
+            </div>
+        </div>
+        <button id="testConnection" type="button">🧪 Test Connection</button>
+        <div id="connectionStatus"></div>
+    </div>
+
     <form id="qaForm">
-        <select id="model">
-            <option value="phi3">phi3</option>
-            <option value="llama3">llama3</option>
-            <option value="mistral">mistral</option>
-            <option value="gemma">gemma</option>
-        </select>
+        <h3>❓ Ask Questions</h3>
+        <div class="model-selection">
+            <label for="model">AI Model:</label>
+            <select id="model">
+                <option value="phi3">phi3</option>
+                <option value="llama3">llama3</option>
+                <option value="mistral">mistral</option>
+                <option value="gemma">gemma</option>
+            </select>
+        </div>
         <textarea id="question" placeholder="Ask a question about the novels..."></textarea>
         <button type="submit">Ask</button>
     </form>
@@ -50,6 +80,101 @@
     <pre id="answer">Your answer will appear here...</pre>
 
     <script>
+        // Ollama configuration
+        let currentOllamaEndpoint = 'http://localhost:11434';
+        
+        // Auto-detect Ollama endpoint
+        async function detectOllamaEndpoint() {
+            const detectedSpan = document.getElementById('detectedEndpoint');
+            detectedSpan.textContent = 'Detecting...';
+            
+            try {
+                // Try common Ollama endpoints
+                const endpoints = [
+                    'http://localhost:11434',
+                    'http://host.docker.internal:11434',
+                    'http://127.0.0.1:11434'
+                ];
+                
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(`${endpoint}/api/tags`, { 
+                            method: 'GET',
+                            signal: AbortSignal.timeout(2000) // 2 second timeout
+                        });
+                        if (response.ok) {
+                            detectedSpan.textContent = endpoint;
+                            currentOllamaEndpoint = endpoint;
+                            return endpoint;
+                        }
+                    } catch (e) {
+                        // Continue to next endpoint
+                    }
+                }
+                
+                detectedSpan.textContent = 'Not detected';
+                return null;
+            } catch (error) {
+                detectedSpan.textContent = 'Error detecting';
+                return null;
+            }
+        }
+        
+        // Handle radio button changes
+        document.querySelectorAll('input[name="ollamaMode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const customInput = document.getElementById('customEndpointInput');
+                const autoInfo = document.getElementById('autoDetectInfo');
+                
+                if (this.value === 'custom') {
+                    customInput.style.display = 'block';
+                    autoInfo.style.display = 'none';
+                } else {
+                    customInput.style.display = 'none';
+                    autoInfo.style.display = 'block';
+                }
+            });
+        });
+        
+        // Test connection button
+        document.getElementById('testConnection').addEventListener('click', async function() {
+            const statusDiv = document.getElementById('connectionStatus');
+            const customEndpoint = document.getElementById('customEndpoint').value;
+            const isCustomMode = document.querySelector('input[name="ollamaMode"]:checked').value === 'custom';
+            
+            let endpointToTest = currentOllamaEndpoint;
+            if (isCustomMode && customEndpoint) {
+                endpointToTest = customEndpoint;
+            }
+            
+            if (!endpointToTest) {
+                statusDiv.innerHTML = '<p class="error">❌ Please provide an endpoint to test</p>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<p class="info">🧪 Testing connection to ' + endpointToTest + '...</p>';
+            
+            try {
+                const response = await fetch(`${endpointToTest}/api/tags`, { 
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const modelCount = data.models ? data.models.length : 0;
+                    statusDiv.innerHTML = `<p class="success">✅ Connected successfully! Found ${modelCount} model(s)</p>`;
+                    
+                    // Update current endpoint
+                    currentOllamaEndpoint = endpointToTest;
+                } else {
+                    statusDiv.innerHTML = `<p class="error">❌ Connection failed: HTTP ${response.status}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="error">❌ Connection failed: ${error.message}</p>`;
+            }
+        });
+        
         // Display selected file names
         document.getElementById('novelFile').addEventListener('change', function(e) {
             const fileListDiv = document.getElementById('fileList');
@@ -108,6 +233,14 @@
             e.preventDefault();
             const question = document.getElementById('question').value;
             const model = document.getElementById('model').value;
+            const isCustomMode = document.querySelector('input[name="ollamaMode"]:checked').value === 'custom';
+            const customEndpoint = document.getElementById('customEndpoint').value;
+            
+            // Determine which endpoint to use
+            let endpointToUse = currentOllamaEndpoint;
+            if (isCustomMode && customEndpoint) {
+                endpointToUse = customEndpoint;
+            }
 
             if (!question.trim()) {
                  document.getElementById('answer').textContent = "Please enter a question.";
@@ -121,7 +254,11 @@
                 const res = await fetch('/ask', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ question, model })
+                    body: JSON.stringify({ 
+                        question, 
+                        model,
+                        ollamaEndpoint: endpointToUse
+                    })
                 });
 
                 const data = await res.json();
@@ -133,6 +270,11 @@
             } catch (error) {
                  document.getElementById('answer').textContent = `Network Error: ${error.message}`;
             }
+        });
+        
+        // Initialize Ollama detection on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            detectOllamaEndpoint();
         });
     </script>
 </body>

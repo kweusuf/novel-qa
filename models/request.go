@@ -1,8 +1,9 @@
 package models
 
 type QuestionRequest struct {
-	Question string `json:"question" binding:"required"`
-	Model    string `json:"model" binding:"required"`
+	Question       string `json:"question" binding:"required"`
+	Model          string `json:"model" binding:"required"`
+	OllamaEndpoint string `json:"ollamaEndpoint,omitempty"`
 }
 
 type UploadRequest struct {

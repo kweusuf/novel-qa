@@ -113,8 +113,17 @@ func (qh *QAHandler) AskQuestion(c *gin.Context) {
 		return
 	}
 
-	// Ask Ollama
-	answer, err := qh.ollamaService.Ask(req.Question, req.Model, context)
+	// Use custom endpoint if provided, otherwise use default service
+	var answer string
+	if req.OllamaEndpoint != "" {
+		// Create a temporary Ollama service with custom endpoint
+		customOllamaService := services.NewOllamaService(req.OllamaEndpoint)
+		answer, err = customOllamaService.Ask(req.Question, req.Model, context)
+	} else {
+		// Use the default Ollama service
+		answer, err = qh.ollamaService.Ask(req.Question, req.Model, context)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get answer from model: " + err.Error()})
 		return
