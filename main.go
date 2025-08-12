@@ -3,6 +3,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/kweusuf/novel-qa-go/handlers"
 	"github.com/kweusuf/novel-qa-go/services"
@@ -11,11 +12,17 @@ import (
 )
 
 func main() {
+	// Get Ollama host from environment variable, fallback to localhost
+	ollamaHost := os.Getenv("OLLAMA_HOST")
+	if ollamaHost == "" {
+		ollamaHost = "http://localhost:11434"
+	}
+
 	// Initialize services
 	novelService := services.NewNovelService("novels")
 	chromaService := services.NewChromaService("chroma_db")
 	chromaService.Initialize() // Initialize the ChromaDB
-	ollamaService := services.NewOllamaService("http://localhost:11434")
+	ollamaService := services.NewOllamaService(ollamaHost)
 
 	// Initialize handler
 	qaHandler := handlers.NewQAHandler(novelService, chromaService, ollamaService)
@@ -34,6 +41,7 @@ func main() {
 	r.POST("/upload", qaHandler.UploadNovel)
 	r.POST("/ask", qaHandler.AskQuestion)
 
-	log.Println("🚀 Starting server at http://localhost:8080")
+	log.Printf("🚀 Starting server at http://localhost:8080")
+	log.Printf("🔗 Using Ollama at: %s", ollamaHost)
 	r.Run(":8080")
 }
