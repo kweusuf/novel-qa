@@ -131,3 +131,31 @@ func (qh *QAHandler) AskQuestion(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"answer": answer})
 }
+
+func (qh *QAHandler) GetModels(c *gin.Context) {
+	// Get Ollama endpoint from query parameter or use default
+	ollamaEndpoint := c.Query("endpoint")
+	if ollamaEndpoint == "" {
+		// Use the default Ollama service endpoint from the handler's service
+		// This will use the same endpoint that was configured at startup
+		models, err := qh.ollamaService.GetModels()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get models: " + err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"models": models})
+		return
+	}
+
+	// Create a temporary Ollama service to get models from custom endpoint
+	ollamaService := services.NewOllamaService(ollamaEndpoint)
+
+	// Get available models
+	models, err := ollamaService.GetModels()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get models: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"models": models})
+}

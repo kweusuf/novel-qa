@@ -111,6 +111,22 @@ input, textarea, select, button {
     width: 200px;
 }
 
+#refreshModels {
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    padding: 8px 12px;
+    margin-left: 10px;
+    font-size: 0.9em;
+}
+
+#refreshModels:hover {
+    background: #5a6268;
+}
+
 #testConnection {
     background: #17a2b8;
     color: white;

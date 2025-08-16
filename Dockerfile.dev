@@ -2,7 +2,7 @@
 FROM golang:1.24-alpine
 
 # Install git, ca-certificates, and Air for hot reloading
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache git ca-certificates curl
 
 # Install Air for hot reloading
 RUN go install github.com/cosmtrek/air@latest
@@ -24,6 +24,8 @@ RUN mkdir -p novels chroma_db
 
 # Expose port
 EXPOSE 8080
+
+ENV IS_DOCKER=true
 
 # Run Air for hot reloading
 CMD ["air", "-c", ".air.toml"]

@@ -32,11 +32,17 @@
         <h3>❓ Question Test with Custom Endpoint</h3>
         <input type="text" id="testQuestion" placeholder="What is 2+2?" value="What is 2+2?">
         <select id="testModel">
-            <option value="phi3">phi3</option>
-            <option value="qwen2.5-coder">qwen2.5-coder</option>
+            <option value="">Loading models...</option>
         </select>
         <button onclick="testQuestionWithCustomEndpoint()">Ask Question</button>
         <div id="questionResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🤖 Models API Test</h3>
+        <input type="text" id="modelsEndpoint" placeholder="http://localhost:11434" value="http://localhost:11434">
+        <button onclick="testModelsAPI()">Get Models</button>
+        <div id="modelsResult"></div>
     </div>
 
     <script>
@@ -117,6 +123,11 @@
                 return;
             }
             
+            if (!model) {
+                resultDiv.innerHTML = '<span class="error">❌ Please select a model</span>';
+                return;
+            }
+            
             resultDiv.innerHTML = '<span class="info">Asking question...</span>';
             
             try {
@@ -141,9 +152,54 @@
             }
         }
         
+        // Test models API
+        async function testModelsAPI() {
+            const resultDiv = document.getElementById('modelsResult');
+            const endpoint = document.getElementById('modelsEndpoint').value;
+            
+            if (!endpoint) {
+                resultDiv.innerHTML = '<span class="error">❌ Please enter an endpoint</span>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<span class="info">Testing models API...</span>';
+            
+            try {
+                const response = await fetch(`/models?endpoint=${encodeURIComponent(endpoint)}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const models = data.models || [];
+                    
+                    if (models.length > 0) {
+                        resultDiv.innerHTML = `<span class="success">✅ Found ${models.length} model(s): ${models.join(', ')}</span>`;
+                        
+                        // Also populate the test model dropdown
+                        const testModelSelect = document.getElementById('testModel');
+                        testModelSelect.innerHTML = '';
+                        models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model;
+                            option.textContent = model;
+                            testModelSelect.appendChild(option);
+                        });
+                        testModelSelect.value = models[0];
+                    } else {
+                        resultDiv.innerHTML = '<span class="error">❌ No models found</span>';
+                    }
+                } else {
+                    const errorData = await response.json();
+                    resultDiv.innerHTML = `<span class="error">❌ API Error: ${errorData.error || 'Unknown error'}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ API Error: ${error.message}</span>`;
+            }
+        }
+        
         // Auto-test on page load
         window.addEventListener('load', function() {
             setTimeout(testAutoDetection, 1000);
+            setTimeout(testModelsAPI, 2000); // Test models API after auto-detection
         });
     </script>
 </body>

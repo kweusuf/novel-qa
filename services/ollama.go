@@ -124,3 +124,34 @@ Answer:
 
 	return "", fmt.Errorf("no valid response content received")
 }
+
+// GetModels retrieves available models from Ollama
+func (os *OllamaService) GetModels() ([]string, error) {
+	resp, err := os.client.Get(os.baseURL + "/api/tags")
+	if err != nil {
+		return nil, fmt.Errorf("failed to call Ollama API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Ollama API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var tagsResponse struct {
+		Models []struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&tagsResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	var models []string
+	for _, model := range tagsResponse.Models {
+		models = append(models, model.Name)
+	}
+
+	return models, nil
+}
