@@ -15,11 +15,7 @@ func main() {
 	// Get Ollama host from environment variable, fallback to localhost
 	ollamaHost := os.Getenv("OLLAMA_HOST")
 	if ollamaHost == "" {
-		if os.Getenv("IS_DOCKER") == "true" {
-			ollamaHost = "http://host.docker.internal:11434"
-		} else {
-			ollamaHost = "http://localhost:11434"
-		}
+		ollamaHost = "http://localhost:11434"
 	}
 
 	// Initialize services

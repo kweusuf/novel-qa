@@ -18,7 +18,7 @@
 ### Prerequisites
 
 - Go 1.24+
-- Ollama running locally (or in Docker)
+- Ollama running locally
 
 ### Running Locally
 

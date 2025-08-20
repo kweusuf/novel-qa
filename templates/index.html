@@ -17,6 +17,45 @@
         #fileList li {
             margin-bottom: 5px;
         }
+
+        /* Style for test connection button */
+        #testConnection {
+            padding: 4px 8px !important;
+            font-size: 0.85em !important;
+            margin-left: 8px !important;
+            height: 28px !important;
+            line-height: 1 !important;
+            display: inline-block !important;
+            flex-shrink: 0 !important;
+            width: auto !important;
+            float: none !important;
+        }
+
+        /* Align custom endpoint input and button */
+        .custom-input {
+            display: none;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            flex-direction: row !important;
+        }
+
+        .custom-input input {
+            flex: 1 1 70% !important;
+            min-width: 200px !important;
+            display: inline-block !important;
+        }
+
+        .custom-input button {
+            flex: 0 0 auto !important;
+            display: inline-block !important;
+        }
+
+        .custom-input small {
+            margin-top: 5px;
+            width: 100%;
+            flex-basis: 100%;
+        }
     </style>
 </head>
 <body>
@@ -51,13 +90,13 @@
                 🔧 Custom Ollama Endpoint
             </label>
             <div id="customEndpointInput" class="custom-input" style="display: none;">
-                <input type="text" id="customEndpoint" placeholder="http://localhost:11434" 
-                       pattern="https?://.+:\d+" 
+                <input type="text" id="customEndpoint" placeholder="http://localhost:11434"
+                       pattern="https?://.+:\d+"
                        title="Must be a valid URL with protocol and port">
+                <button id="testConnection" type="button">🧪 Test Connection</button>
                 <small>Format: http://hostname:port or https://hostname:port</small>
             </div>
         </div>
-        <button id="testConnection" type="button">🧪 Test Connection</button>
         <div id="connectionStatus"></div>
     </div>
 
@@ -80,23 +119,22 @@
     <script>
         // Ollama configuration
         let currentOllamaEndpoint = 'http://localhost:11434';
-        
+
         // Auto-detect Ollama endpoint
         async function detectOllamaEndpoint() {
             const detectedSpan = document.getElementById('detectedEndpoint');
             detectedSpan.textContent = 'Detecting...';
-            
+
             try {
                 // Try common Ollama endpoints
                 const endpoints = [
                     'http://localhost:11434',
-                    'http://host.docker.internal:11434',
                     'http://127.0.0.1:11434'
                 ];
-                
+
                 for (const endpoint of endpoints) {
                     try {
-                        const response = await fetch(`${endpoint}/api/tags`, { 
+                        const response = await fetch(`${endpoint}/api/tags`, {
                             method: 'GET',
                             signal: AbortSignal.timeout(2000) // 2 second timeout
                         });
@@ -109,7 +147,7 @@
                         // Continue to next endpoint
                     }
                 }
-                
+
                 detectedSpan.textContent = 'Not detected';
                 return null;
             } catch (error) {
@@ -164,16 +202,16 @@
         async function populateModels(endpoint = null) {
             const modelSelect = document.getElementById('model');
             const endpointToUse = endpoint || currentOllamaEndpoint;
-            
+
             try {
                 const response = await fetch(`/models?endpoint=${encodeURIComponent(endpointToUse)}`);
                 if (response.ok) {
                     const data = await response.json();
                     const models = data.models || [];
-                    
+
                     // Clear existing options
                     modelSelect.innerHTML = '';
-                    
+
                     if (models.length === 0) {
                         modelSelect.innerHTML = '<option value="">No models found</option>';
                     } else {
@@ -184,18 +222,20 @@
                             option.textContent = model;
                             modelSelect.appendChild(option);
                         });
-                        
+
                         // Select first model by default
                         if (models.length > 0) {
                             modelSelect.value = models[0];
                         }
                     }
                 } else {
+                    const errorText = await response.text();
+                    console.error(`Model loading failed: ${response.status} - ${errorText}`);
                     modelSelect.innerHTML = '<option value="">Error loading models</option>';
                 }
             } catch (error) {
-                modelSelect.innerHTML = '<option value="">Failed to load models</option>';
                 console.error('Error loading models:', error);
+                modelSelect.innerHTML = '<option value="">Failed to load models</option>';
             }
         }
         
@@ -217,17 +257,30 @@
             radio.addEventListener('change', function() {
                 const customInput = document.getElementById('customEndpointInput');
                 const autoInfo = document.getElementById('autoDetectInfo');
-                
+                const testConnectionBtn = document.getElementById('testConnection');
+                const connectionStatus = document.getElementById('connectionStatus');
+
                 if (this.value === 'custom') {
                     customInput.style.display = 'block';
                     autoInfo.style.display = 'none';
+                    testConnectionBtn.style.display = 'inline-block';
+                    connectionStatus.style.display = 'block';
                 } else {
                     customInput.style.display = 'none';
                     autoInfo.style.display = 'block';
+                    testConnectionBtn.style.display = 'none';
+                    connectionStatus.style.display = 'none';
+                    // When switching to auto mode, re-detect the endpoint and refresh models automatically
+                    detectOllamaEndpoint().then(() => {
+                        // Auto-refresh models when switching to auto mode
+                        populateModels();
+                    });
                 }
-                
-                // Refresh models when switching modes
-                refreshModels();
+
+                // For custom mode, just refresh with current custom endpoint
+                if (this.value === 'custom') {
+                    refreshModels();
+                }
             });
         });
         
@@ -332,10 +385,22 @@
         document.getElementById('refreshModels').addEventListener('click', refreshModels);
         
         // Initialize Ollama detection on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            detectOllamaEndpoint();
-            // Populate models on page load
-            populateModels();
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Hide test connection elements by default since auto mode is selected
+            document.getElementById('testConnection').style.display = 'none';
+            document.getElementById('connectionStatus').style.display = 'none';
+
+            await detectOllamaEndpoint();
+            // Populate models on page load after endpoint detection
+            await populateModels();
+
+            // Add Enter key support for custom endpoint input
+            document.getElementById('customEndpoint').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('testConnection').click();
+                }
+            });
         });
     </script>
 </body>
