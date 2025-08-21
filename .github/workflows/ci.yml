@@ -164,6 +164,7 @@ jobs:
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
 
     steps:
     - name: Checkout code
@@ -171,6 +172,9 @@ jobs:
 
     - name: Dependency Review
       uses: actions/dependency-review-action@v4
+      with:
+        base-ref: ${{ github.event.pull_request.base.sha }}
+        head-ref: ${{ github.event.pull_request.head.sha }}
 
   codeql:
     name: CodeQL Analysis
