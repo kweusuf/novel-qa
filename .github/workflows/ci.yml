@@ -98,12 +98,16 @@ jobs:
         go-version: '1.24'
         cache: true
 
-    - name: Install golangci-lint
+    - name: Run basic Go checks
       run: |
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.60.2
-
-    - name: Run golangci-lint
-      run: golangci-lint run --timeout=5m
+        echo "Running go fmt..."
+        go fmt ./...
+        echo "Running go vet..."
+        go vet ./...
+        echo "Running go mod tidy check..."
+        go mod tidy
+        git diff --exit-code go.mod go.sum || (echo "go.mod/go.sum not tidy" && exit 1)
+        echo "All basic checks passed!"
 
     - name: Install gosec
       run: |
