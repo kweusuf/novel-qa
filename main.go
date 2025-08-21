@@ -11,7 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func main() {
+// runServer contains all the main application logic that can be tested
+func runServer() (*gin.Engine, error) {
 	// Get Ollama host from environment variable, fallback to localhost
 	ollamaHost := os.Getenv("OLLAMA_HOST")
 	if ollamaHost == "" {
@@ -44,5 +45,14 @@ func main() {
 
 	log.Printf("🚀 Starting server at http://localhost:8080")
 	log.Printf("🔗 Using Ollama at: %s", ollamaHost)
+
+	return r, nil
+}
+
+func main() {
+	r, err := runServer()
+	if err != nil {
+		log.Fatal("Failed to initialize server:", err)
+	}
 	r.Run(":8080")
 }
