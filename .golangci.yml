@@ -1,5 +1,5 @@
 run:
-  timeout: 5m
+  timeout: 3m
   modules-download-mode: readonly
 
 issues:
@@ -8,56 +8,19 @@ issues:
 
 linters:
   enable:
-    - bodyclose
-    - depguard
-    - dogsled
-    - dupl
     - errcheck
-    - exhaustive
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
     - gofmt
     - goimports
-    - revive
-    - gosimple
     - govet
     - ineffassign
-    - lll
     - misspell
-    - nakedret
-    - noctx
-    - nolintlint
-    - rowserrcheck
     - staticcheck
-    - stylecheck
     - typecheck
-    - unconvert
-    - unparam
     - unused
     - whitespace
 
 linters-settings:
-  gocyclo:
-    min-complexity: 10
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  depguard:
-    list-type: blacklist
   misspell:
     locale: US
-  lll:
-    line-length: 140
   goimports:
     local-prefixes: github.com/kweusuf/novel-qa-go
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-    disabled-checks:
-      - wrapperFunc
