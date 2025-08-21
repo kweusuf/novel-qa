@@ -105,10 +105,12 @@ jobs:
     - name: Run golangci-lint
       run: golangci-lint run --timeout=5m
 
+    - name: Install gosec
+      run: |
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
     - name: Run security scan
-      uses: securecodewarrior/github-action-gosec@master
-      with:
-        args: './...'
+      run: gosec ./...
 
     - name: Check for vulnerabilities
       run: |
