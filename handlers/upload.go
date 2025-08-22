@@ -28,8 +28,15 @@ func (uh *UploadHandler) UploadNovel(c *gin.Context) {
 		return
 	}
 
-	if len(file.Filename) < 4 || file.Filename[len(file.Filename)-4:] != ".txt" {
-		c.String(http.StatusBadRequest, "Only .txt files allowed")
+	// Check if file is .txt or .epub
+	if len(file.Filename) < 4 {
+		c.String(http.StatusBadRequest, "Invalid filename")
+		return
+	}
+
+	extension := file.Filename[len(file.Filename)-4:]
+	if extension != ".txt" && extension != ".epub" {
+		c.String(http.StatusBadRequest, "Only .txt and .epub files are supported. Please upload files with .txt or .epub extensions.")
 		return
 	}
 

@@ -65,9 +65,9 @@
 
     <div class="upload-section">
         <h3>📤 Upload New Novels</h3>
-        <p><small>Select one or more .txt files (Cmd/Ctrl+Click or Shift+Click to select multiple files from the same folder).</small></p>
+        <p><small>Select one or more .txt or .epub files (Cmd/Ctrl+Click or Shift+Click to select multiple files from the same folder).</small></p>
         <form id="uploadForm" enctype="multipart/form-data">
-            <input type="file" id="novelFile" name="files" accept=".txt" multiple required>
+            <input type="file" id="novelFile" name="files" accept=".txt,.epub" multiple required>
             <div id="fileList"></div> <!-- Display selected files -->
             <button type="submit">Upload Selected Novels</button>
         </form>
