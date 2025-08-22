@@ -2,8 +2,10 @@
 package services
 
 import (
+	"archive/zip"
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,25 +34,37 @@ func (ns *NovelService) LoadNovels() ([]NovelChunk, error) {
 	}
 
 	for _, file := range files {
+		filePath := filepath.Join(ns.novelsDir, file.Name())
+
+		var content string
+		var err error
+
 		if filepath.Ext(file.Name()) == ".txt" {
-			filePath := filepath.Join(ns.novelsDir, file.Name())
-			content, err := os.ReadFile(filePath)
+			contentBytes, err := os.ReadFile(filePath)
 			if err != nil {
 				continue
 			}
-
-			words := strings.Fields(string(content))
-			for i := 0; i < len(words); i += 400 {
-				end := i + 400
-				if end > len(words) {
-					end = len(words)
-				}
-				chunk := strings.Join(words[i:end], " ")
-				chunks = append(chunks, NovelChunk{
-					ID:   file.Name() + "-" + string(rune(i/400)),
-					Text: chunk,
-				})
+			content = string(contentBytes)
+		} else if filepath.Ext(file.Name()) == ".epub" {
+			content, err = ns.readEPUB(filePath)
+			if err != nil {
+				continue
 			}
+		} else {
+			continue
+		}
+
+		words := strings.Fields(content)
+		for i := 0; i < len(words); i += 400 {
+			end := i + 400
+			if end > len(words) {
+				end = len(words)
+			}
+			chunk := strings.Join(words[i:end], " ")
+			chunks = append(chunks, NovelChunk{
+				ID:   file.Name() + "-" + fmt.Sprintf("%d", i/400),
+				Text: chunk,
+			})
 		}
 	}
 
@@ -89,9 +103,81 @@ func (ns *NovelService) ProcessNovel(filename string, content string) []NovelChu
 
 // Add the missing ReadNovel method
 func (ns *NovelService) ReadNovel(filepath string) (string, error) {
+	if strings.HasSuffix(filepath, ".epub") {
+		return ns.readEPUB(filepath)
+	}
+
 	content, err := os.ReadFile(filepath)
 	if err != nil {
 		return "", err
 	}
 	return string(content), nil
+}
+
+// readEPUB reads and extracts text content from an EPUB file
+func (ns *NovelService) readEPUB(filepath string) (string, error) {
+	// Open the EPUB file as a ZIP archive
+	reader, err := zip.OpenReader(filepath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open EPUB file: %v", err)
+	}
+	defer reader.Close()
+
+	var content strings.Builder
+
+	// Iterate through all files in the EPUB
+	for _, file := range reader.File {
+		// Look for HTML/XHTML content files
+		if strings.HasSuffix(file.Name, ".html") || strings.HasSuffix(file.Name, ".xhtml") {
+			// Open the file from the ZIP archive
+			rc, err := file.Open()
+			if err != nil {
+				continue
+			}
+
+			// Read the content
+			data, err := io.ReadAll(rc)
+			if err != nil {
+				rc.Close()
+				continue
+			}
+			rc.Close()
+
+			// Simple text extraction (remove HTML tags)
+			text := ns.extractTextFromHTML(string(data))
+			content.WriteString(text)
+			content.WriteString(" ")
+		}
+	}
+
+	return content.String(), nil
+}
+
+// extractTextFromHTML performs basic HTML tag removal to extract text
+func (ns *NovelService) extractTextFromHTML(html string) string {
+	// Simple HTML tag removal (basic implementation)
+	var result strings.Builder
+	inTag := false
+
+	for _, char := range html {
+		if char == '<' {
+			inTag = true
+		} else if char == '>' {
+			inTag = false
+		} else if !inTag {
+			result.WriteRune(char)
+		}
+	}
+
+	// Clean up extra whitespace
+	text := strings.TrimSpace(result.String())
+	text = strings.ReplaceAll(text, "\n", " ")
+	text = strings.ReplaceAll(text, "\t", " ")
+
+	// Remove multiple spaces
+	for strings.Contains(text, "  ") {
+		text = strings.ReplaceAll(text, "  ", " ")
+	}
+
+	return text
 }
