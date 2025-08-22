@@ -49,9 +49,26 @@ func (qh *QAHandler) UploadNovel(c *gin.Context) {
 	processedCount := 0
 
 	for _, fileHeader := range files {
-		// Validate file type (same as before)
-		if len(fileHeader.Filename) < 4 || fileHeader.Filename[len(fileHeader.Filename)-4:] != ".txt" {
-			results = append(results, fmt.Sprintf("Skipped '%s': Only .txt files allowed", fileHeader.Filename))
+		// Validate file type (updated to support both .txt and .epub)
+		if len(fileHeader.Filename) < 4 {
+			results = append(results, fmt.Sprintf("Skipped '%s': Invalid filename", fileHeader.Filename))
+			continue
+		}
+
+		// Check for .txt extension (4 characters)
+		// Check for .epub extension (5 characters)
+		var isValidExtension bool
+		if strings.HasSuffix(fileHeader.Filename, ".txt") {
+			isValidExtension = true
+		} else if strings.HasSuffix(fileHeader.Filename, ".epub") {
+			isValidExtension = true
+		}
+
+		// Debug: Log filename and extension check results
+		fmt.Printf("DEBUG: Processing file '%s', isValidExtension: %t\n", fileHeader.Filename, isValidExtension)
+
+		if !isValidExtension {
+			results = append(results, fmt.Sprintf("Skipped '%s': Only .txt and .epub files are supported. Please upload files with .txt or .epub extensions.", fileHeader.Filename))
 			continue
 		}
 
