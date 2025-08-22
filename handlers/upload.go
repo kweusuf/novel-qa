@@ -36,7 +36,7 @@ func (uh *UploadHandler) UploadNovel(c *gin.Context) {
 
 	extension := file.Filename[len(file.Filename)-4:]
 	if extension != ".txt" && extension != ".epub" {
-		c.String(http.StatusBadRequest, "Only .txt and .epub files allowed")
+		c.String(http.StatusBadRequest, "Only .txt and .epub files are supported. Please upload files with .txt or .epub extensions.")
 		return
 	}
 
