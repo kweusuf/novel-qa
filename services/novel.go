@@ -159,9 +159,13 @@ func (ns *NovelService) extractTextFromHTML(html string) string {
 	var result strings.Builder
 	inTag := false
 
-	for _, char := range html {
+	for i, char := range html {
 		if char == '<' {
 			inTag = true
+			// Add space if we're transitioning from content to tag and not at the beginning
+			if i > 0 && !strings.Contains(" \t\n", string(html[i-1])) && result.Len() > 0 && result.String()[result.Len()-1] != ' ' {
+				result.WriteRune(' ')
+			}
 		} else if char == '>' {
 			inTag = false
 		} else if !inTag {

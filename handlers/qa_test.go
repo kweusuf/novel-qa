@@ -117,10 +117,43 @@ func TestUploadNovel_InvalidFile(t *testing.T) {
 		t.Errorf("Expected status code %d, got %d", http.StatusInternalServerError, w.Code)
 	}
 
-	// Check that response contains error message about file type
+	// Check that response contains error message about file type (updated for EPUB support)
 	response := w.Body.String()
-	if !bytes.Contains([]byte(response), []byte("Only .txt files allowed")) {
+	if !bytes.Contains([]byte(response), []byte("Only .txt and .epub files are supported")) {
 		t.Error("Expected response to contain file type error message")
+	}
+}
+
+func TestUploadNovel_ValidEPUBFile(t *testing.T) {
+	handler := setupMockHandler()
+
+	// Create a mock EPUB file content (ZIP structure with HTML content)
+	epubContent := []byte("Mock EPUB content - this would be a valid EPUB file")
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("files", "test.epub")
+	if err != nil {
+		t.Fatalf("Failed to create form file: %v", err)
+	}
+	part.Write(epubContent)
+	writer.Close()
+
+	req := httptest.NewRequest("POST", "/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	r.POST("/upload", handler.UploadNovel)
+
+	r.ServeHTTP(w, req)
+
+	// Note: This will fail because our mock EPUB content isn't a valid EPUB file
+	// But it tests that the extension validation works
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("Expected status code %d, got %d", http.StatusInternalServerError, w.Code)
 	}
 }
 

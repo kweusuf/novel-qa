@@ -105,7 +105,7 @@ func TestUploadHandler_UploadNovel_InvalidFileType(t *testing.T) {
 	}
 
 	response := w.Body.String()
-	if !bytes.Contains([]byte(response), []byte("Only .txt files allowed")) {
+	if !bytes.Contains([]byte(response), []byte("Only .txt and .epub files are supported")) {
 		t.Error("Expected response to contain file type error message")
 	}
 }
